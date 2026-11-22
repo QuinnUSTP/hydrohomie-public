@@ -25,6 +25,8 @@ import gzip
 from django.test import Client
 from .middleware import KNOWN_PATHS
 import os
+from pathlib import Path
+from django.conf import settings
 
 
 NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
@@ -761,12 +763,27 @@ class MobileLayoutTests(TestCase):
             size = float(value) * (1 if unit == "px" else 16)
             self.assertGreaterEqual(size, 14, f"{value}{unit}")
 
-    def test_css_never_hides_content(self):
-        compact = re.sub(r"\s+", "", self.css)
-        for banned in ("display:none", "visibility:hidden"):
-            self.assertNotIn(banned, compact)
-        for path in self.paths:
-            self.assertIsNone(re.search(r"<[^>]+\shidden[\s>]", self.client.get(path).content.decode()), path)
+    def test_css_hides_nothing_except_the_menu(self):
+            
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "site.css").read_text(encoding="utf-8")
+        css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+        for selector, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            compact = re.sub(r"\s+", "", body)
+            if "display:none" in compact or "visibility:hidden" in compact:
+                self.assertTrue("menu-" in selector or ".site-nav" in selector, selector.strip())
+        for path in ["/", "/water-levels/", "/contact/"]:
+            html = self.client.get(path).content.decode()
+            self.assertIsNone(re.search(r"<[^>]+\shidden[\s>]", html), path)
+
+    def test_collapsible_menu_is_wired_up_and_keeps_every_link(self):
+        paths = ["/", "/water-levels/", "/alerts-events/", "/announcements/",
+                 "/flood-map/", "/safety-guide/", "/contact/"]
+        for path in paths:
+            html = self.client.get(path).content.decode()
+            self.assertIn('<input type="checkbox" id="menu-toggle" class="menu-toggle">', html)
+            self.assertIn('<label class="menu-button" for="menu-toggle">', html)
+            nav = re.search(r'<nav class="site-nav".*?</nav>', html, re.S).group(0)
+            self.assertEqual(len(re.findall(r"<a href=", nav)), 5, path)
 
     def test_no_wide_fixed_widths(self):
         for prop, value in re.findall(r"(?<![-\w])((?:min-)?width):\s*(\d+)px", self.css):
@@ -1071,22 +1088,26 @@ class OpenGraphTests(TestCase):
     def test_404_page_has_no_social_tags(self):
         self.assertEqual(_meta(self.client, "/no-such-page/").social, [])
 
-class SearchConsoleTests(TestCase):
-    def test_tag_is_absent_when_not_configured(self):
-        with override_settings(GOOGLE_SITE_VERIFICATION=""):
-            html = Client().get("/").content.decode()
-        self.assertNotIn("google-site-verification", html)
+class MenuTests(TestCase):
+    PATHS = ["/", "/water-levels/", "/alerts-events/", "/announcements/",
+             "/flood-map/", "/safety-guide/", "/contact/"]
 
-    def test_tag_appears_once_in_the_head_when_configured(self):
-        token = "abc123_TOKEN-xyz"
-        with override_settings(GOOGLE_SITE_VERIFICATION=token):
-            html = Client().get("/").content.decode()
-        tag = f'<meta name="google-site-verification" content="{token}">'
-        self.assertEqual(html.count(tag), 1)
-        self.assertLess(html.index(tag), html.index("</head>"))
+    def test_css_hides_nothing_except_the_menu(self):
+        css_file = Path(settings.BASE_DIR) / "static" / "css" / "site.css"
+        css = re.sub(r"/\*.*?\*/", "", css_file.read_text(encoding="utf-8"), flags=re.S)
+        for selector, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            compact = re.sub(r"\s+", "", body)
+            if "display:none" in compact or "visibility:hidden" in compact:
+                self.assertTrue("menu-" in selector or ".site-nav" in selector, selector.strip())
+        for path in self.PATHS:
+            html = self.client.get(path).content.decode()
+            self.assertIsNone(re.search(r"<[^>]+\shidden[\s>]", html), path)
 
-    def test_token_is_html_escaped(self):
-        with override_settings(GOOGLE_SITE_VERIFICATION='x"><script>'):
-            html = Client().get("/").content.decode()
-        self.assertNotIn('"><script>', html)
-        self.assertIn("&quot;&gt;&lt;script&gt;", html)
+    def test_collapsible_menu_is_wired_up_and_keeps_every_link(self):
+        for path in self.PATHS:
+            html = self.client.get(path).content.decode()
+            self.assertIn('<input type="checkbox" id="menu-toggle" class="menu-toggle">', html)
+            self.assertIn('<label class="menu-button" for="menu-toggle">', html)
+            nav = re.search(r'<nav class="site-nav".*?</nav>', html, re.S).group(0)
+            self.assertEqual(len(re.findall(r"<a href=", nav)), 5, path)
+

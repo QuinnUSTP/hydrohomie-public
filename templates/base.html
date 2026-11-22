@@ -30,6 +30,8 @@
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="{% url 'home' %}"><img src="{% static 'img/logo.svg' %}" alt="" width="32" height="32"> {{ SITE_NAME }}</a>
+      <input type="checkbox" id="menu-toggle" class="menu-toggle">
+      <label class="menu-button" for="menu-toggle"><span class="menu-icon" aria-hidden="true"></span>Menu</label>
       <nav class="site-nav" aria-label="Main">
         <ul>
           {% for p in PRIMARY_NAV %}{% url 'info' slug=p.slug as page_url %}
