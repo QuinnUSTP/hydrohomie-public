@@ -4,13 +4,51 @@
 {% block description %}{{ og_description }}{% endblock %}
 {% block jsonld %}<script type="application/ld+json">{{ json_ld|safe }}</script>{% endblock %}
 {% block content %}
-<h1>Flood monitoring and alerts for Barangay Kauswagan</h1>
-<p class="lead">{{ intro }}</p>
-<img class="hero" src="{% static 'img/hero-placeholder.svg' %}" alt="" width="800" height="300" fetchpriority="high">
-<h2>Where to start</h2>
-<ul class="cards">
-  {% for p in PRIMARY_NAV %}
-  <li><a href="{% url 'info' slug=p.slug %}"><strong>{{ p.label }}</strong><span>{{ p.intro }}</span></a></li>
-  {% endfor %}
-</ul>
+<section class="hero-section">
+  <div class="container hero-grid">
+    <div>
+      <p class="eyebrow">Early flood warnings</p>
+      <h1>Flood monitoring and alerts for Barangay Kauswagan</h1>
+      <p class="lead">{{ intro }}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{% url 'info' slug='water-levels' %}">Check water levels</a>
+        <a class="btn btn-ghost" href="{% url 'info' slug='safety-guide' %}">Read the safety guide</a>
+      </div>
+    </div>
+    <img class="hero" src="{% static 'img/hero-placeholder.svg' %}" alt="" width="640" height="520" fetchpriority="high">
+  </div>
+  <svg class="wave" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 40C240 90 480 0 720 40S1200 80 1440 30V80H0Z"/></svg>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <h2>Where to start</h2>
+      <p>Find the latest information and what to do next.</p>
+    </div>
+    <ul class="cards">
+      {% for p in PRIMARY_NAV %}
+      <li><a href="{% url 'info' slug=p.slug %}">
+        <span class="icon-badge">{% include "partials/icon.html" with name=p.slug %}</span>
+        <h3>{{ p.label }}</h3>
+        <p>{{ p.intro }}</p>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-head">
+      <h2>How it works</h2>
+      <p>From the riverside to your phone in three steps.</p>
+    </div>
+    <ol class="steps">
+      <li><h3>Sensors watch the water</h3><p>Ultrasonic and float sensors measure the water level in each zone.</p></li>
+      <li><h3>The system checks the levels</h3><p>When both sensors agree the water is too high, HydroHomie raises an alert.</p></li>
+      <li><h3>You get the warning</h3><p>Barangay officials are notified and residents can receive text-message alerts.</p></li>
+    </ol>
+  </div>
+</section>
 {% endblock %}
