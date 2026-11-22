@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }} | {{ SITE_NAME }}{% endblock %}
+{% block description %}{{ page.description }}{% endblock %}
+{% block content %}
+<h1>{{ page.h1 }}</h1>
+<p class="lead">{{ page.intro }}</p>
+{% if page.slug == "contact" %}
+<p>Email us at <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>.</p>
+{% else %}
+<p class="placeholder">{{ page.placeholder }}</p>
+{% endif %}
+{% if related %}
+<h2>Related pages</h2>
+<ul class="related">
+  {% for r in related %}
+  <li><a href="{% url 'info' slug=r.slug %}">{{ r.h1 }}</a>: {{ r.intro }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

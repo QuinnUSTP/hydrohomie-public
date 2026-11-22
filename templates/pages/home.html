@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ SITE_NAME }} | Flood Monitoring for Barangay Kauswagan{% endblock %}
+{% block description %}{{ og_description }}{% endblock %}
+{% block jsonld %}<script type="application/ld+json">{{ json_ld|safe }}</script>{% endblock %}
+{% block content %}
+<h1>Flood monitoring and alerts for Barangay Kauswagan</h1>
+<p class="lead">{{ intro }}</p>
+<img class="hero" src="{% static 'img/hero-placeholder.svg' %}" alt="" width="800" height="300" fetchpriority="high">
+<h2>Where to start</h2>
+<ul class="cards">
+  {% for p in PRIMARY_NAV %}
+  <li><a href="{% url 'info' slug=p.slug %}"><strong>{{ p.label }}</strong><span>{{ p.intro }}</span></a></li>
+  {% endfor %}
+</ul>
+{% endblock %}

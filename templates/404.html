@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Page not found | {{ SITE_NAME }}{% endblock %}
+{% block description %}The page you were looking for could not be found. Use these links to find flood information for Barangay Kauswagan.{% endblock %}
+{% block canonical %}{% endblock %}
+{% block social %}{% endblock %}
+{% block content %}
+<h1>Page not found</h1>
+<p class="lead">We could not find that page. It may have moved, or the address may be mistyped.</p>
+<p>Try one of these pages:</p>
+<ul class="related">
+  <li><a href="{% url 'home' %}">{{ SITE_NAME }} home page</a></li>
+  {% for p in PRIMARY_NAV %}
+  <li><a href="{% url 'info' slug=p.slug %}">{{ p.h1 }}</a></li>
+  {% endfor %}
+</ul>
+{% endblock %}
