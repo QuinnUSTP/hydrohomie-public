@@ -1,6 +1,6 @@
 {% load live %}{% hub_status as hub %}
 {% if hub.code == "live" %}
-<p class="live-note">Live data. Last update {{ hub.last_seen|date:"M j, g:i A" }}. This page refreshes every minute.</p>
+<p class="live-note">Live data. Last update {{ hub.last_seen|date:"M j, g:i A" }}. This page refreshes every 30 seconds.</p>
 {% elif hub.code == "delayed" %}
 <p class="live-banner" role="status">Data may be delayed. We last heard from the monitoring system at {{ hub.last_seen|date:"M j, g:i A" }}. Readings show as Unknown until updates resume. If you are in danger, use the Emergency hotlines page.</p>
 {% else %}
