@@ -1316,3 +1316,46 @@ class LivePagesTests(TestCase):
             self.assertEqual(levels[0], 1, path)
             for prev, nxt in zip(levels, levels[1:]):
                 self.assertLessEqual(nxt, prev + 1, (path, levels))
+
+@override_settings(INGEST_TOKEN=INGEST_TOKEN)
+class IngestReplaceTests(TestCase):
+    def post(self, payload):
+        return self.client.post("/api/ingest/", data=json.dumps(payload),
+                                content_type="application/json",
+                                HTTP_AUTHORIZATION=f"Bearer {INGEST_TOKEN}")
+
+    def zone(self, key):
+        return {"key": key, "name": key.upper(), "state": "normal", "level_cm": 10,
+                "measured_at": "2026-11-23T08:59:30+08:00"}
+
+    def note(self, ident):
+        return {"id": ident, "title": ident, "body": "Text",
+                "published_at": "2026-11-23T08:30:00+08:00", "active": True}
+
+    def test_replace_removes_missing_zones_and_hides_missing_announcements(self):
+        self.post({"schema": 1, "zones": [self.zone("z1"), self.zone("z2")],
+                   "announcements": [self.note("n1"), self.note("n2")]})
+        response = self.post({"schema": 1, "replace": ["zones", "announcements"],
+                              "zones": [self.zone("z1")], "announcements": [self.note("n1")]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(ZoneStatus.objects.values_list("key", flat=True)), ["z1"])
+        self.assertTrue(PublicAnnouncement.objects.get(external_id="n1").is_active)
+        self.assertFalse(PublicAnnouncement.objects.get(external_id="n2").is_active)
+
+    def test_without_replace_nothing_is_removed(self):
+        self.post({"schema": 1, "zones": [self.zone("z1"), self.zone("z2")]})
+        self.post({"schema": 1, "zones": [self.zone("z1")]})
+        self.assertEqual(ZoneStatus.objects.count(), 2)
+
+    def test_replace_with_empty_lists_clears_everything(self):
+        self.post({"schema": 1, "zones": [self.zone("z1")], "announcements": [self.note("n1")]})
+        self.post({"schema": 1, "replace": ["zones", "announcements"], "zones": [], "announcements": []})
+        self.assertEqual(ZoneStatus.objects.count(), 0)
+        self.assertFalse(PublicAnnouncement.objects.get().is_active)
+
+    def test_bad_replace_values_are_rejected_and_change_nothing(self):
+        self.post({"schema": 1, "zones": [self.zone("z1")]})
+        for bad in (["alerts"], "zones", [["zones"]], [{"a": 1}]):
+            response = self.post({"schema": 1, "replace": bad, "zones": []})
+            self.assertEqual(response.status_code, 400, bad)
+        self.assertEqual(ZoneStatus.objects.count(), 1)

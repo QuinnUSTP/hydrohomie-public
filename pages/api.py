@@ -18,6 +18,7 @@ ZONE_STATES = {code for code, _ in ZoneStatus.STATES}
 SEVERITIES = {code for code, _ in PublicAlert.SEVERITIES}
 SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 IDENT = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+REPLACEABLE = ("zones", "announcements")
 
 
 class Invalid(Exception):
@@ -82,6 +83,9 @@ def _level(obj):
 
 def _apply(data):
     counts = {}
+    replace = data.get("replace", [])
+    if not isinstance(replace, list) or any(item not in REPLACEABLE for item in replace):
+        raise Invalid("replace may only list zones and announcements")
     for name, limit in LIMITS.items():
         items = data.get(name, [])
         if not isinstance(items, list) or len(items) > limit:
@@ -90,12 +94,16 @@ def _apply(data):
             raise Invalid(f"every item in {name} must be an object")
         counts[name] = len(items)
 
+    zone_keys, note_ids = [], []
+
     for z in data.get("zones", []):
         state = z.get("state")
         if state not in ZONE_STATES:
             raise Invalid("zone state is not recognised")
+        key = _slug(z, "key")
+        zone_keys.append(key)
         ZoneStatus.objects.update_or_create(
-            key=_slug(z, "key"),
+            key=key,
             defaults={"name": _text(z, "name", 80), "state": state,
                       "level_cm": _level(z), "measured_at": _when(z, "measured_at")},
         )
@@ -116,11 +124,18 @@ def _apply(data):
         active = n.get("active", True)
         if not isinstance(active, bool):
             raise Invalid("active must be true or false")
+        ident = _ident(n, "id")
+        note_ids.append(ident)
         PublicAnnouncement.objects.update_or_create(
-            external_id=_ident(n, "id"),
+            external_id=ident,
             defaults={"title": _text(n, "title", 120), "body": _text(n, "body", 2000),
                       "published_at": _when(n, "published_at"), "is_active": active},
         )
+
+    if "zones" in replace:
+        ZoneStatus.objects.exclude(key__in=zone_keys).delete()
+    if "announcements" in replace:
+        PublicAnnouncement.objects.exclude(external_id__in=note_ids).update(is_active=False)
 
     HubHeartbeat.objects.update_or_create(
         pk=1,
