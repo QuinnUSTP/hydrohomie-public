@@ -3,5 +3,5 @@
     if (document.visibilityState === "visible") {
       window.location.reload();
     }
-  }, 60000);
+  }, 30000);
 })();
