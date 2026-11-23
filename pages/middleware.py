@@ -86,3 +86,15 @@ class CanonicalURLMiddleware:
         if host_wrong or scheme_wrong:
             return f"{settings.SITE_URL}{new_path}{suffix}"
         return f"{new_path}{suffix}"
+
+class LiveDataCacheMiddleware:
+    PATHS = {"/water-levels/", "/alerts-events/", "/announcements/"}
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.path in self.PATHS:
+            response["Cache-Control"] = "no-cache"
+        return response

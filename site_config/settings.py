@@ -54,6 +54,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "pages.middleware.LiveDataCacheMiddleware",
     "pages.middleware.CanonicalURLMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -106,6 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en"
 TIME_ZONE = "Asia/Manila"
+LIVE_STALE_MINUTES = 10
 USE_I18N = True
 USE_TZ = True
 

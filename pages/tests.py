@@ -28,6 +28,8 @@ import os
 from pathlib import Path
 from django.conf import settings
 from .models import HubHeartbeat, PublicAlert, PublicAnnouncement, ZoneStatus
+from datetime import timedelta
+from django.utils import timezone
 
 
 NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
@@ -1213,3 +1215,104 @@ class IngestTests(TestCase):
         self.assertEqual(response["Cache-Control"], "no-store")
         self.assertEqual(response["X-Robots-Tag"], "noindex")
         self.assertEqual(len(response.cookies), 0)
+
+class LivePagesTests(TestCase):
+    LIVE_PATHS = ["/water-levels/", "/alerts-events/", "/announcements/"]
+
+    def page(self, path):
+        return self.client.get(path).content.decode()
+
+    def beat(self, minutes_ago=0):
+        HubHeartbeat.objects.update_or_create(
+            pk=1, defaults={"last_seen": timezone.now() - timedelta(minutes=minutes_ago)})
+
+    def zone(self, state="normal", minutes_ago=0, level=42.5):
+        return ZoneStatus.objects.create(
+            key="zone-1", name="Zone 1", state=state, level_cm=level,
+            measured_at=timezone.now() - timedelta(minutes=minutes_ago))
+
+    def test_empty_state_says_no_data_yet(self):
+        html = self.page("/water-levels/")
+        self.assertIn("No data has been received yet.", html)
+        self.assertNotIn('class="zones"', html)
+
+    def test_fresh_data_shows_state_and_level(self):
+        self.beat(0)
+        self.zone("alert")
+        html = self.page("/water-levels/")
+        self.assertIn('class="badge badge-alert"', html)
+        self.assertIn("42.5 cm", html)
+        self.assertIn("Live data.", html)
+        self.assertNotIn("Data may be delayed.", html)
+
+    def test_stale_heartbeat_turns_every_zone_unknown(self):
+        self.beat(30)
+        self.zone("normal")
+        html = self.page("/water-levels/")
+        self.assertIn("Data may be delayed.", html)
+        self.assertIn("badge-unknown", html)
+        self.assertNotIn("badge-normal", html)
+        self.assertNotIn("42.5 cm", html)
+
+    def test_old_zone_reading_turns_unknown_even_if_hub_is_live(self):
+        self.beat(0)
+        self.zone("normal", minutes_ago=30)
+        html = self.page("/water-levels/")
+        self.assertIn("badge-unknown", html)
+        self.assertNotIn("badge-normal", html)
+
+    def test_alerts_page_lists_active_and_recent(self):
+        self.beat(0)
+        now = timezone.now()
+        PublicAlert.objects.create(external_id="a1", zone_key="zone-1", zone_name="Zone 1",
+                                   severity="alert", started_at=now)
+        PublicAlert.objects.create(external_id="a2", zone_key="zone-2", zone_name="Zone 2",
+                                   severity="watch", started_at=now - timedelta(hours=2), ended_at=now)
+        html = self.page("/alerts-events/")
+        self.assertIn("Zone 1: Alert", html)
+        self.assertIn("Zone 2: Watch", html)
+        self.assertNotIn("There are no active alerts.", html)
+
+    def test_no_alerts_claim_only_while_data_is_live(self):
+        self.beat(0)
+        self.assertIn("There are no active alerts.", self.page("/alerts-events/"))
+        self.beat(30)
+        html = self.page("/alerts-events/")
+        self.assertNotIn("There are no active alerts.", html)
+        self.assertIn("Alert information is unavailable right now.", html)
+
+    def test_announcements_show_active_only_and_escape_html(self):
+        now = timezone.now()
+        PublicAnnouncement.objects.create(external_id="n1", title="Road closed",
+                                          body="<script>alert(1)</script>", published_at=now)
+        PublicAnnouncement.objects.create(external_id="n2", title="Old news", body="x",
+                                          published_at=now, is_active=False)
+        html = self.page("/announcements/")
+        self.assertIn("Road closed", html)
+        self.assertNotIn("Old news", html)
+        self.assertIn("&lt;script&gt;", html)
+        self.assertNotIn("<script>alert(1)</script>", html)
+
+    def test_live_pages_are_uncached_and_refresh_themselves(self):
+        for path in self.LIVE_PATHS:
+            response = self.client.get(path)
+            self.assertIn("no-cache", response["Cache-Control"], path)
+            self.assertRegex(response.content.decode(),
+                             r'<script src="[^"]*live-refresh[^"]*" defer></script>')
+        self.assertNotIn("live-refresh", self.page("/faq/"))
+
+    def test_heading_levels_stay_valid_with_data(self):
+        self.beat(0)
+        self.zone("watch")
+        now = timezone.now()
+        PublicAlert.objects.create(external_id="a1", zone_key="zone-1", zone_name="Zone 1",
+                                   severity="alert", started_at=now)
+        PublicAnnouncement.objects.create(external_id="n1", title="Notice", body="Hello", published_at=now)
+        for path in self.LIVE_PATHS:
+            parser = _HeadingParser()
+            parser.feed(self.page(path))
+            levels = [h[0] for h in parser.headings]
+            self.assertEqual(levels.count(1), 1, path)
+            self.assertEqual(levels[0], 1, path)
+            for prev, nxt in zip(levels, levels[1:]):
+                self.assertLessEqual(nxt, prev + 1, (path, levels))

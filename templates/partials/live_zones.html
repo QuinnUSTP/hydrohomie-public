@@ -1,0 +1,16 @@
+{% load live %}
+{% include "partials/live_status.html" %}
+{% zone_cards as cards %}
+{% if cards %}
+<h2>Current status by zone</h2>
+<ul class="zones">
+  {% for c in cards %}
+  <li class="zone zone-{{ c.state }}">
+    <h3>{{ c.zone.name }}</h3>
+    <span class="badge badge-{{ c.state }}">{{ c.label }}</span>
+    {% if c.show_level %}<p class="zone-level">{{ c.zone.level_cm|floatformat:1 }} cm</p>{% endif %}
+    <p class="zone-time">Measured {{ c.zone.measured_at|date:"M j, g:i A" }}</p>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

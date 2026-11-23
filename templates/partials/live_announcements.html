@@ -1,0 +1,17 @@
+{% load live %}
+{% include "partials/live_status.html" %}
+{% announcements as notes %}
+<h2>Latest announcements</h2>
+{% if notes %}
+<ul class="event-list">
+  {% for n in notes %}
+  <li class="event">
+    <h3>{{ n.title }}</h3>
+    <p class="zone-time">{{ n.published_at|date:"M j, g:i A" }}</p>
+    <p class="notice-body">{{ n.body }}</p>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>There are no announcements right now.</p>
+{% endif %}

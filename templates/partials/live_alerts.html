@@ -1,0 +1,33 @@
+{% load live %}
+{% include "partials/live_status.html" %}
+{% hub_status as hub %}{% alert_lists as alerts %}
+<h2>Active alerts</h2>
+{% if alerts.active %}
+<ul class="event-list">
+  {% for a in alerts.active %}
+  <li class="event event-{{ a.severity }}">
+    <h3>{{ a.zone_name }}: {{ a.get_severity_display }}</h3>
+    <p class="zone-time">Since {{ a.started_at|date:"M j, g:i A" }}</p>
+    {% if a.summary %}<p>{{ a.summary }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% elif hub.code == "live" %}
+<p>There are no active alerts.</p>
+{% else %}
+<p>Alert information is unavailable right now.</p>
+{% endif %}
+<h2>Recent alerts</h2>
+{% if alerts.recent %}
+<ul class="event-list">
+  {% for a in alerts.recent %}
+  <li class="event">
+    <h3>{{ a.zone_name }}: {{ a.get_severity_display }}</h3>
+    <p class="zone-time">{{ a.started_at|date:"M j, g:i A" }} to {{ a.ended_at|date:"M j, g:i A" }}</p>
+    {% if a.summary %}<p>{{ a.summary }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No past alerts have been recorded yet.</p>
+{% endif %}
