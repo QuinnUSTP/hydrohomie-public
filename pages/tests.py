@@ -27,6 +27,7 @@ from .middleware import KNOWN_PATHS
 import os
 from pathlib import Path
 from django.conf import settings
+from .models import HubHeartbeat, PublicAlert, PublicAnnouncement, ZoneStatus
 
 
 NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
@@ -1111,3 +1112,104 @@ class MenuTests(TestCase):
             nav = re.search(r'<nav class="site-nav".*?</nav>', html, re.S).group(0)
             self.assertEqual(len(re.findall(r"<a href=", nav)), 5, path)
 
+INGEST_TOKEN = "test-token-1234567890"
+
+
+@override_settings(INGEST_TOKEN=INGEST_TOKEN)
+class IngestTests(TestCase):
+    URL = "/api/ingest/"
+
+    def post(self, payload, token=INGEST_TOKEN):
+        headers = {"HTTP_AUTHORIZATION": f"Bearer {token}"} if token else {}
+        body = payload if isinstance(payload, (str, bytes)) else json.dumps(payload)
+        return self.client.post(self.URL, data=body, content_type="application/json", **headers)
+
+    def payload(self, **overrides):
+        data = {
+            "schema": 1,
+            "sent_at": "2026-11-23T09:00:00+08:00",
+            "zones": [{"key": "zone-1", "name": "Zone 1", "state": "normal", "level_cm": 42.5,
+                       "measured_at": "2026-11-23T08:59:30+08:00"}],
+            "alerts": [{"id": "alert-1", "zone_key": "zone-1", "zone_name": "Zone 1",
+                        "severity": "alert", "started_at": "2026-11-23T08:00:00+08:00",
+                        "ended_at": None, "summary": "Water is rising."}],
+            "announcements": [{"id": "note-1", "title": "Notice", "body": "Stay alert.",
+                               "published_at": "2026-11-23T08:30:00+08:00", "active": True}],
+        }
+        data.update(overrides)
+        return data
+
+    def test_valid_payload_is_stored_and_resending_is_idempotent(self):
+        for _ in range(2):
+            response = self.post(self.payload())
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.json()["ok"])
+        self.assertEqual(ZoneStatus.objects.count(), 1)
+        self.assertEqual(PublicAlert.objects.count(), 1)
+        self.assertEqual(PublicAnnouncement.objects.count(), 1)
+        self.assertEqual(HubHeartbeat.objects.count(), 1)
+        self.assertEqual(ZoneStatus.objects.get().level_cm, 42.5)
+
+    def test_updates_change_existing_rows(self):
+        self.post(self.payload())
+        changed = self.payload()
+        changed["zones"][0]["state"] = "alert"
+        changed["alerts"][0]["ended_at"] = "2026-11-23T10:00:00+08:00"
+        changed["announcements"][0]["active"] = False
+        self.assertEqual(self.post(changed).status_code, 200)
+        self.assertEqual(ZoneStatus.objects.get().state, "alert")
+        self.assertIsNotNone(PublicAlert.objects.get().ended_at)
+        self.assertFalse(PublicAnnouncement.objects.get().is_active)
+
+    def test_heartbeat_only_payload_is_accepted(self):
+        response = self.post({"schema": 1, "sent_at": "2026-11-23T09:00:00+08:00"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(HubHeartbeat.objects.count(), 1)
+        self.assertEqual(ZoneStatus.objects.count(), 0)
+
+    def test_missing_or_wrong_token_is_rejected(self):
+        for token in (None, "wrong", INGEST_TOKEN + "x"):
+            response = self.post(self.payload(), token=token)
+            self.assertEqual(response.status_code, 401, token)
+            self.assertEqual(response["WWW-Authenticate"], "Bearer")
+        self.assertEqual(ZoneStatus.objects.count(), 0)
+
+    @override_settings(INGEST_TOKEN="")
+    def test_disabled_when_no_token_is_configured(self):
+        self.assertEqual(self.post(self.payload(), token="anything").status_code, 403)
+        self.assertEqual(self.post(self.payload(), token="").status_code, 403)
+
+    def test_only_post_is_allowed(self):
+        self.assertEqual(self.client.get(self.URL).status_code, 405)
+
+    def test_bad_payloads_are_rejected_and_nothing_is_saved(self):
+        bad = []
+        p = self.payload(); p["zones"][0]["state"] = "flooded"; bad.append(p)
+        p = self.payload(); p["zones"][0]["measured_at"] = "2026-11-23T08:59:30"; bad.append(p)
+        p = self.payload(); p["zones"][0]["level_cm"] = -5; bad.append(p)
+        p = self.payload(); p["zones"][0]["key"] = "Zone 1!"; bad.append(p)
+        p = self.payload(); p["alerts"][0]["severity"] = "panic"; bad.append(p)
+        p = self.payload(); p["announcements"][0]["active"] = "yes"; bad.append(p)
+        bad.append(self.payload(schema=2))
+        bad.append(self.payload(zones=[
+            {"key": f"z-{i}", "name": "Z", "state": "normal", "measured_at": "2026-11-23T08:59:30+08:00"}
+            for i in range(51)]))
+        for payload in bad:
+            self.assertEqual(self.post(payload).status_code, 400, payload)
+        for model in (ZoneStatus, PublicAlert, PublicAnnouncement, HubHeartbeat):
+            self.assertEqual(model.objects.count(), 0, model.__name__)
+
+    def test_not_json_and_non_object_json_are_rejected(self):
+        for body in ("not json", "[]", '"text"'):
+            self.assertEqual(self.post(body).status_code, 400, body)
+
+    def test_oversized_body_is_rejected(self):
+        big = self.payload()
+        big["announcements"][0]["body"] = "x" * 70_000
+        self.assertEqual(self.post(json.dumps(big)).status_code, 413)
+
+    def test_response_headers_and_no_cookies(self):
+        response = self.post(self.payload())
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertEqual(response["X-Robots-Tag"], "noindex")
+        self.assertEqual(len(response.cookies), 0)
