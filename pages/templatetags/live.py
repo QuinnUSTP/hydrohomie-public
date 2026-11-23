@@ -29,7 +29,11 @@ def zone_cards():
     cutoff = timezone.now() - _limit()
     cards = []
     for zone in ZoneStatus.objects.all():
-        state = zone.state if hub_is_live and zone.measured_at >= cutoff else "unknown"
+        stale = not hub_is_live or zone.measured_at < cutoff
+        if zone.state == "offline" and hub_is_live:
+            state = "offline"
+        else:
+            state = "unknown" if stale else zone.state
         cards.append({
             "zone": zone,
             "state": state,
