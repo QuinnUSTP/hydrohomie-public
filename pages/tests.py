@@ -530,7 +530,7 @@ class LinkTests(TestCase):
                 if href.startswith("#"):
                     self.assertIn(href[1:], parser.ids, (path, href))
                     continue
-                self.assertTrue(href.startswith(("/", "mailto:", "https://")), (path, href))
+                self.assertTrue(href.startswith(("/", "mailto:", "tel:", "https://")), (path, href))
                 if href.startswith("/"):
                     self.assertNotIn("?", href, (path, href))
                     last = href.rstrip("/").rsplit("/", 1)[-1]
@@ -1359,3 +1359,5 @@ class IngestReplaceTests(TestCase):
             response = self.post({"schema": 1, "replace": bad, "zones": []})
             self.assertEqual(response.status_code, 400, bad)
         self.assertEqual(ZoneStatus.objects.count(), 1)
+
+

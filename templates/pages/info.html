@@ -19,6 +19,10 @@
     {% include "partials/live_alerts.html" %}
     {% elif page.slug == "announcements" %}
     {% include "partials/live_announcements.html" %}
+    {% elif page.slug == "safety-guide" %}
+    {% include "partials/safety_guide.html" %}
+    {% elif page.slug == "emergency-hotlines" %}
+    {% include "partials/hotlines.html" %}
     {% else %}
     <p class="placeholder"><span class="pill">Coming soon</span> {{ page.placeholder }}</p>
     {% endif %}
