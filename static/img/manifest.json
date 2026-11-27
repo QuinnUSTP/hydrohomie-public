@@ -1,0 +1,26 @@
+{
+  "name": "HydroHomie - Barangay Kauswagan flood monitor",
+  "short_name": "HydroHomie",
+  "start_url": "/water-levels/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1479c9",
+  "icons": [
+    {
+      "src": "/static/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

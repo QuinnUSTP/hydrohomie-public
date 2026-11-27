@@ -1360,4 +1360,17 @@ class IngestReplaceTests(TestCase):
             self.assertEqual(response.status_code, 400, bad)
         self.assertEqual(ZoneStatus.objects.count(), 1)
 
+class EvacuationDataTests(TestCase):
+    def test_entries_are_complete(self):
+        from pages.evacuation_data import EVACUATION_CENTERS
+        for c in EVACUATION_CENTERS:
+            for key in ("name", "address", "capacity", "zones", "verified"):
+                self.assertTrue(c.get(key), (c.get("name"), key))
+
+class ReportsDataTests(TestCase):
+    def test_entries_are_complete(self):
+        from pages.reports_data import REPORTS
+        for r in REPORTS:
+            for key in ("title", "date", "summary"):
+                self.assertTrue(r.get(key), (r.get("title"), key))
 

@@ -1,0 +1,18 @@
+{% load site_data %}
+{% flood_reports as items %}
+<div class="guide">
+  <h2>Flood event reports</h2>
+  {% if items %}
+  <ul class="center-list">
+    {% for r in items %}
+    <li>
+      <h3>{{ r.title }}</h3>
+      <p class="sources">{{ r.date }}</p>
+      <p>{{ r.summary }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="tbc">No flood event reports yet. After a flood, a short summary will be posted here.</p>
+  {% endif %}
+</div>

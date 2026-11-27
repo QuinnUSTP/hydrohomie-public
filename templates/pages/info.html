@@ -25,6 +25,14 @@
     {% include "partials/hotlines.html" %}
     {% elif page.slug == "evacuation-centers" %}
     {% include "partials/evacuation_centers.html" %}
+    {% elif page.slug == "faq" %}
+    {% include "partials/faq.html" %}
+    {% elif page.slug == "about" %}
+    {% include "partials/about.html" %}
+    {% elif page.slug == "privacy" %}
+    {% include "partials/privacy.html" %}
+    {% elif page.slug == "reports" %}
+    {% include "partials/reports.html" %}
     {% else %}
     <p class="placeholder"><span class="pill">Coming soon</span> {{ page.placeholder }}</p>
     {% endif %}
