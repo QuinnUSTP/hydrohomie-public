@@ -23,6 +23,8 @@
     {% include "partials/safety_guide.html" %}
     {% elif page.slug == "emergency-hotlines" %}
     {% include "partials/hotlines.html" %}
+    {% elif page.slug == "evacuation-centers" %}
+    {% include "partials/evacuation_centers.html" %}
     {% else %}
     <p class="placeholder"><span class="pill">Coming soon</span> {{ page.placeholder }}</p>
     {% endif %}

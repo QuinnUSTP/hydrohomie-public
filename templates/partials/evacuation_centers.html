@@ -1,0 +1,22 @@
+{% load site_data %}
+{% evacuation_centers as centers %}
+<div class="guide">
+  <p class="review-note">Check this list with barangay officials before relying on it.</p>
+  <h2>Where to go</h2>
+  {% if centers %}
+  <ul class="center-list">
+    {% for c in centers %}
+    <li>
+      <h3>{{ c.name }}</h3>
+      <p>{{ c.address }}</p>
+      <p>Capacity: {{ c.capacity }} people. For: {{ c.zones }}.</p>
+      {% if c.contact %}<p>Contact: {{ c.contact }}</p>{% endif %}
+      {% if c.notes %}<p>{{ c.notes }}</p>{% endif %}
+      <p class="sources">Last checked {{ c.verified }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="tbc">Evacuation centers will be listed here once the barangay confirms them.</p>
+  {% endif %}
+</div>

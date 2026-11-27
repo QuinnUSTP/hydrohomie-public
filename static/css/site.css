@@ -193,3 +193,8 @@ p { margin: 0 0 1rem; }
 .hotline-number { font-size: 1.5rem; font-weight: 800; }
 .hotline-number a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .tbc { color: var(--muted); font-style: italic; }
+
+.center-list { display: grid; gap: 1rem; margin: 0 0 1.5rem; padding: 0; list-style: none; }
+.center-list li { margin: 0; padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: 0.9rem; background: var(--bg); }
+.center-list h3 { margin: 0 0 0.5rem; }
+.center-list p { margin: 0 0 0.5rem; }
